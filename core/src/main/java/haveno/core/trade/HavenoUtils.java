@@ -376,7 +376,7 @@ public class HavenoUtils {
 
     /**
      * Sign an offer.
-     * 
+     *
      * @param offer is an unsigned offer to sign
      * @param keyRing is the arbitrator's key ring to sign with
      * @return the arbitrator's signature
@@ -594,7 +594,7 @@ public class HavenoUtils {
     public static boolean isIllegal(Throwable e) {
         return e instanceof IllegalArgumentException || e instanceof IllegalStateException;
     }
-    
+
     public static void playChimeSound() {
         playAudioFile("chime.wav");
     }
@@ -613,10 +613,10 @@ public class HavenoUtils {
                 File wavFile = new File(havenoSetup.getConfig().appDataDir, fileName);
                 if (!wavFile.exists()) FileUtil.resourceToFile(fileName, wavFile);
                 AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(wavFile);
-    
+
                 // get original format
                 AudioFormat baseFormat = audioInputStream.getFormat();
-    
+
                 // set target format: PCM_SIGNED, 16-bit, 44100 Hz
                 AudioFormat targetFormat = new AudioFormat(
                     AudioFormat.Encoding.PCM_SIGNED,
@@ -627,10 +627,10 @@ public class HavenoUtils {
                     44100.0f,
                     false // Little-endian
                 );
-    
+
                 // convert audio to target format
                 AudioInputStream convertedStream = AudioSystem.getAudioInputStream(targetFormat, audioInputStream);
-    
+
                 // play audio
                 DataLine.Info info = new DataLine.Info(SourceDataLine.class, targetFormat);
                 SourceDataLine sourceLine = (SourceDataLine) AudioSystem.getLine(info);
