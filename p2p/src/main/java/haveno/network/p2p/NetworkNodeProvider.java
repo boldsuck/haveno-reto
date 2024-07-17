@@ -44,6 +44,7 @@ public class NetworkNodeProvider implements Provider<NetworkNode> {
             @Named(Config.MAX_CONNECTIONS) int maxConnections,
             @Named(Config.USE_LOCALHOST_FOR_P2P) boolean useLocalhostForP2P,
             @Named(Config.NODE_PORT) int port,
+            @Named(Config.HIDDEN_SERVICE_ADDRESS) String hiddenServiceAddress,
             @Named(Config.TOR_DIR) File torDir,
             @Nullable @Named(Config.TORRC_FILE) File torrcFile,
             @Named(Config.TORRC_OPTIONS) String torrcOptions,
@@ -65,7 +66,7 @@ public class NetworkNodeProvider implements Provider<NetworkNode> {
                     password,
                     cookieFile,
                     useSafeCookieAuthentication);
-            networkNode = new TorNetworkNode(port, networkProtoResolver, streamIsolation, torMode, banFilter, maxConnections, controlHost);
+            networkNode = new TorNetworkNode(hiddenServiceAddress, port, networkProtoResolver, streamIsolation, torMode, banFilter, maxConnections, controlHost);
         }
     }
 

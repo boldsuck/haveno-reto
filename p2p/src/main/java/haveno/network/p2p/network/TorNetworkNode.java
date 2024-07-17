@@ -17,28 +17,23 @@
 
 package haveno.network.p2p.network;
 
+import haveno.common.util.Hex;
 import haveno.network.p2p.NodeAddress;
-import haveno.network.utils.Utils;
 
 import haveno.common.Timer;
 import haveno.common.UserThread;
 import haveno.common.proto.network.NetworkProtoResolver;
 import haveno.common.util.SingleThreadExecutorUtils;
 
-import org.berndpruenster.netlayer.tor.HiddenServiceSocket;
-import org.berndpruenster.netlayer.tor.Tor;
-import org.berndpruenster.netlayer.tor.TorCtlException;
-import org.berndpruenster.netlayer.tor.TorSocket;
-
 import com.runjva.sourceforge.jsocks.protocol.Socks5Proxy;
 
-import java.security.SecureRandom;
-
 import java.net.Socket;
+import java.net.InetAddress;
+import java.net.ServerSocket;
 
 import java.io.IOException;
 
-import java.util.Base64;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -52,13 +47,11 @@ public class TorNetworkNode extends NetworkNode {
     private static final long SHUT_DOWN_TIMEOUT = 2;
 
     private final String torControlHost;
+    private final String serviceAddress;
 
-    private HiddenServiceSocket hiddenServiceSocket;
     private Timer shutDownTimeoutTimer;
-    private Tor tor;
     private TorMode torMode;
     private boolean streamIsolation;
-    private Socks5Proxy socksProxy;
     private boolean shutDownInProgress;
     private boolean shutDownComplete;
     private final ExecutorService executor;
@@ -67,13 +60,14 @@ public class TorNetworkNode extends NetworkNode {
     // Constructor
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    public TorNetworkNode(int servicePort,
+    public TorNetworkNode(String hiddenServiceAddress, int servicePort,
             NetworkProtoResolver networkProtoResolver,
             boolean useStreamIsolation,
             TorMode torMode,
             @Nullable BanFilter banFilter,
             int maxConnections, String torControlHost) {
         super(servicePort, networkProtoResolver, banFilter, maxConnections);
+        this.serviceAddress = hiddenServiceAddress;
         this.torMode = torMode;
         this.streamIsolation = useStreamIsolation;
         this.torControlHost = torControlHost;
@@ -92,33 +86,50 @@ public class TorNetworkNode extends NetworkNode {
         if (setupListener != null)
             addSetupListener(setupListener);
 
-        createTorAndHiddenService(Utils.findFreeSystemPort(), servicePort);
+        createTorAndHiddenService(servicePort);
     }
 
     @Override
     protected Socket createSocket(NodeAddress peerNodeAddress) throws IOException {
-        checkArgument(peerNodeAddress.getHostName().endsWith(".onion"), "PeerAddress is not an onion address");
-        // If streamId is null stream isolation gets deactivated.
-        // Hidden services use stream isolation by default, so we pass null.
-        return new TorSocket(peerNodeAddress.getHostName(), peerNodeAddress.getPort(), torControlHost, null);
+        // https://www.ietf.org/rfc1928.txt SOCKS5 Protocol
+        try {
+            checkArgument(peerNodeAddress.getHostName().endsWith(".onion"), "PeerAddress is not an onion address");
+            Socket sock = new Socket(InetAddress.getLoopbackAddress(), 9050);
+            sock.getOutputStream().write(Hex.decode("050100"));
+            String response = Hex.encode(sock.getInputStream().readNBytes(2));
+            if (!response.equalsIgnoreCase("0500")) {
+                return null;
+            }
+            String connect_details = "050100033E" + Hex.encode(peerNodeAddress.getHostName().getBytes(StandardCharsets.UTF_8));
+            StringBuilder connect_port = new StringBuilder(Integer.toHexString(peerNodeAddress.getPort()));
+            while (connect_port.length() < 4) connect_port.insert(0, "0");
+            connect_details = connect_details + connect_port;
+            sock.getOutputStream().write(Hex.decode(connect_details));
+            response = Hex.encode(sock.getInputStream().readNBytes(10));
+            if (response.substring(0, 2).equalsIgnoreCase("05") && response.substring(2, 4).equalsIgnoreCase("00")) {
+                return sock;    // success
+            }
+            if (response.substring(2, 4).equalsIgnoreCase("04")) {
+                log.warn("Host unreachable: {}", peerNodeAddress);
+            } else {
+                log.warn("SOCKS error code received {} expected 00", response.substring(2, 4));
+            }
+            if (!response.substring(0, 2).equalsIgnoreCase("05")) {
+                log.warn("unexpected response, this isn't a SOCKS5 proxy?: {} {}", response, response.substring(0, 2));
+            }
+        } catch (Exception e) {
+            log.warn(e.toString());
+        }
+        throw new IOException("createSocket failed");
     }
 
     public Socks5Proxy getSocksProxy() {
         try {
-            String stream = null;
-            if (streamIsolation) {
-                byte[] bytes = new byte[512]; // tor.getProxy creates a Sha256 hash
-                new SecureRandom().nextBytes(bytes);
-                stream = Base64.getEncoder().encodeToString(bytes);
-            }
-
-            if (socksProxy == null || streamIsolation) {
-                tor = Tor.getDefault();
-                socksProxy = tor != null ? tor.getProxy(torControlHost, stream) : null;
-            }
-            return socksProxy;
-        } catch (Throwable t) {
-            log.error("Error at getSocksProxy", t);
+            Socks5Proxy prox = new Socks5Proxy(InetAddress.getLoopbackAddress(), 9050);
+            prox.resolveAddrLocally(false);
+            return prox;
+        } catch (Exception e) {
+            log.warn(e.toString());
             return null;
         }
     }
@@ -145,12 +156,6 @@ public class TorNetworkNode extends NetworkNode {
 
         super.shutDown(() -> {
             try {
-                tor = Tor.getDefault();
-                if (tor != null) {
-                    tor.shutdown();
-                    tor = null;
-                    log.info("Tor shutdown completed");
-                }
                 executor.shutdownNow();
             } catch (Throwable e) {
                 log.error("Shutdown torNetworkNode failed with exception", e);
@@ -166,36 +171,23 @@ public class TorNetworkNode extends NetworkNode {
     // Create tor and hidden service
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    private void createTorAndHiddenService(int localPort, int servicePort) {
+    private void createTorAndHiddenService(int servicePort) {
         executor.submit(() -> {
             try {
-                Tor.setDefault(torMode.getTor());
-                long ts = System.currentTimeMillis();
-                hiddenServiceSocket = new HiddenServiceSocket(localPort, torMode.getHiddenServiceDirectory(), servicePort);
-                nodeAddressProperty.set(new NodeAddress(hiddenServiceSocket.getServiceName() + ":" + hiddenServiceSocket.getHiddenServicePort()));
+                // listener for incoming messages at the hidden service
+                ServerSocket socket = new ServerSocket(servicePort);
+                nodeAddressProperty.set(new NodeAddress(serviceAddress + ":" + servicePort));
+                log.info("\n################################################################\n" +
+                                "Tor hidden service published: {} Port: {}\n" +
+                                "################################################################",
+                        serviceAddress, servicePort);
                 UserThread.execute(() -> setupListeners.forEach(SetupListener::onTorNodeReady));
-                hiddenServiceSocket.addReadyListener(socket -> {
-                    log.info("\n################################################################\n" +
-                            "Tor hidden service published after {} ms. Socket={}\n" +
-                            "################################################################",
-                            System.currentTimeMillis() - ts, socket);
-                    UserThread.execute(() -> {
-                        nodeAddressProperty.set(new NodeAddress(hiddenServiceSocket.getServiceName() + ":"
-                                + hiddenServiceSocket.getHiddenServicePort()));
-                        startServer(socket);
-                        setupListeners.forEach(SetupListener::onHiddenServicePublished);
-                    });
-                    return null;
-                });
-            } catch (TorCtlException e) {
-                log.error("Starting tor node failed", e);
-                if (e.getCause() instanceof IOException) {
-                    UserThread.execute(() -> setupListeners.forEach(s -> s.onSetupFailed(new RuntimeException(e.getMessage()))));
-                } else {
-                    UserThread.execute(() -> setupListeners.forEach(SetupListener::onRequestCustomBridges));
-                    log.warn("We shutdown as starting tor with the default bridges failed. We request user to add custom bridges.");
-                    shutDown(null);
-                }
+                UserThread.runAfter(() -> {
+                    nodeAddressProperty.set(new NodeAddress(serviceAddress + ":" + servicePort));
+                    startServer(socket);
+                    setupListeners.forEach(SetupListener::onHiddenServicePublished);
+                }, 3);
+                return null;
             } catch (IOException e) {
                 log.error("Could not connect to running Tor", e);
                 UserThread.execute(() -> setupListeners.forEach(s -> s.onSetupFailed(new RuntimeException(e.getMessage()))));
