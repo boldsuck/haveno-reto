@@ -7,12 +7,17 @@ User=haveno
 Group=haveno
 SyslogIdentifier=Haveno-Seednode
 
+# Insert --hiddenServiceAddress ~# 'cat /var/lib/tor/haveno-seednode/hostname
 # $PATH is a placeholder
-ExecStart=/bin/sh $PATH/haveno-seednode --baseCurrencyNetwork=XMR_STAGENET\
+ExecStart=/bin/sh $PATH/haveno-seednode --baseCurrencyNetwork=XMR_MAINNET\
   --useLocalhostForP2P=false\
   --useDevPrivilegeKeys=false\
-  --nodePort=2002\
-  --appName=haveno-XMR_STAGENET_Seed_2002
+#  --hiddenServiceAddress=PLACEHOLDER.onion\
+  --nodePort=9992\
+  --appName=haveno_seednode
+  --xmrNode=http://127.0.0.1:18081\
+  --xmrNodeUsername=admin\
+  --xmrNodePassword=password
 
 ExecStop=/bin/kill ${MAINPID}
 Restart=always
