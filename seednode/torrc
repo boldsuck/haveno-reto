@@ -44,7 +44,7 @@ SocksPolicy reject *
 ## Tor will make a notice-level log entry for each connection to the Socks port indicating
 ## whether the request used a safe socks protocol or an unsafe one (see above entry on SafeSocks).
 ## This helps to determine whether an application using Tor is possibly leaking DNS requests. (Default: 0)
-#TestSocks 1
+TestSocks 1
 
 ## Logs go to stdout at level "notice" unless redirected by something
 ## else, like one of the below lines. You can have as many Log lines as
@@ -92,7 +92,7 @@ MetricsPortPolicy accept 127.0.0.1
 
 ## Once you have configured a hidden service, you can look at the
 ## contents of the file ".../hidden_service/hostname" for the address
-## to tell people.
+## to tell people. e.g.: 'sudo cat /var/lib/tor/haveno_seednode/hostname'
 ##
 ## HiddenServicePort x y:z says to redirect requests on port x to the
 ## address y:z.
@@ -115,17 +115,28 @@ HiddenServiceEnableIntroDoSDefense 1
 ## Proof of Work (PoW) before establishing Rendezvous Circuits
 ## The lower the queue and burst rates, the higher the puzzle effort tends to be for users.
 HiddenServicePoWDefensesEnabled 1
-#HiddenServicePoWQueueRate 250          # (Default: 250)
-#HiddenServicePoWQueueBurst 2500        # (Default: 2500)
+HiddenServicePoWQueueRate 200          # (Default: 250)
+HiddenServicePoWQueueBurst 1000        # (Default: 2500)
 
 ## Stream limits in the established Rendezvous Circuits
-#HiddenServiceMaxStreams 100
+HiddenServiceMaxStreams 25
 #HiddenServiceMaxStreamsCloseCircuit 1
 
 ## Haveno seednode2 incoming anonymity connections
 #HiddenServiceDir /var/lib/tor/haveno_seednode2
 #HiddenServicePort 9993 127.0.0.1:9993
-#...
+#HiddenServicePort 9992 [::1]:9992
+
+#HiddenServiceEnableIntroDoSDefense 1
+#HiddenServiceEnableIntroDoSRatePerSec 25       # (Default: 25)
+#HiddenServiceEnableIntroDoSBurstPerSec 200     # (Default: 200)
+
+#HiddenServicePoWDefensesEnabled 1
+#HiddenServicePoWQueueRate 200          # (Default: 250)
+#HiddenServicePoWQueueBurst 1000        # (Default: 2500)
+
+#HiddenServiceMaxStreams 25
+#HiddenServiceMaxStreamsCloseCircuit 1
 
 #####################################################################
 

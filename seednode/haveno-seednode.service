@@ -7,7 +7,11 @@ User=haveno
 Group=haveno
 SyslogIdentifier=Haveno-Seednode
 
-# Insert --hiddenServiceAddress ~# 'cat /var/lib/tor/haveno-seednode/hostname
+# TODO: Insert .onion address with Tor setup script
+# HIDDEN_SERVICE="$(sudo cat /var/lib/tor/haveno-seednode/hostname)"
+# --hiddenServiceAddress=${HIDDEN_SERVICE}\
+
+# Uncomment & insert --hiddenServiceAddress=  'sudo cat /var/lib/tor/haveno-seednode/hostname'
 # $PATH is a placeholder
 ExecStart=/bin/sh $PATH/haveno-seednode --baseCurrencyNetwork=XMR_MAINNET\
   --useLocalhostForP2P=false\
