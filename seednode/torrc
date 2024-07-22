@@ -33,7 +33,7 @@ SocksPort 9050 OnionTrafficOnly ExtendedErrors
 ## can access your SocksPort may be able to learn about the connections
 ## you make.
 SocksPolicy accept 127.0.0.1
-#SocksPolicy accept6 [::1]
+SocksPolicy accept6 [::1]
 SocksPolicy reject *
 
 ## Tor will reject application connections that use unsafe variants of the socks protocol
@@ -57,7 +57,7 @@ TestSocks 1
 #Log notice file /var/log/tor/notices.log
 ## Send every possible message to /var/log/tor/debug.log
 #Log debug file /var/log/tor/debug.log
-## Default: Use the system log instead of Tor's logfiles
+## Use the system log instead of Tor's logfiles (This is default)
 #Log notice syslog
 ## To send all messages to stderr:
 #Log debug stderr
@@ -79,14 +79,14 @@ HiddenServiceStatistics 0
 ##
 ## Compute the hash of a password with "tor --hash-password password".
 #HashedControlPassword 16:872860B76453A77D60CA2BB8C1A7042072093276A3D701AD684053EC4C
-#CookieAuthentication 1 # (Default: 0)
+CookieAuthentication 0    # (Default: 1)
 
 ## MetricsPort provides an interface to the underlying Tor relay metrics.
 ## Exposing publicly is dangerous, set a very strict access policy.
 ## Retrieve the metrics with:  curl http://127.0.0.1:9035/metrics
 MetricsPort 127.0.0.1:9035
 MetricsPortPolicy accept 127.0.0.1
-#MetricsPortPolicy accept [::1]
+MetricsPortPolicy accept [::1]
 
 ############### This section is just for location-hidden services ###
 
@@ -100,7 +100,7 @@ MetricsPortPolicy accept 127.0.0.1
 ## Haveno seednode incoming anonymity connections
 HiddenServiceDir /var/lib/tor/haveno_seednode
 HiddenServicePort 9992 127.0.0.1:9992
-#HiddenServicePort 9992 [::1]:9992
+HiddenServicePort 9992 [::1]:9992
 
 ## HiddenService options are per onion service:
 ## https://community.torproject.org/onion-services/advanced/dos/
