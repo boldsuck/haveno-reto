@@ -424,7 +424,7 @@ abstract public class OfferBookView<R extends GridPane, M extends OfferBookViewM
         currencySelectionSubscriber = currencySelectionBinding.subscribe((observable, oldValue, newValue) -> {
         });
 
-        tableView.setItems(model.getOfferList());
+        UserThread.execute(() -> tableView.setItems(model.getOfferList()));
 
         model.getOfferList().addListener(offerListListener);
         nrOfOffersLabel.setText(Res.get("offerbook.nrOffers", model.getOfferList().size()));
@@ -818,7 +818,6 @@ abstract public class OfferBookView<R extends GridPane, M extends OfferBookViewM
                             @Override
                             public void updateItem(final OfferBookListItem item, boolean empty) {
                                 super.updateItem(item, empty);
-
                                 if (item != null && !empty)
                                     setText(CurrencyUtil.getCurrencyPair(item.getOffer().getCurrencyCode()));
                                 else
@@ -1027,6 +1026,7 @@ abstract public class OfferBookView<R extends GridPane, M extends OfferBookViewM
                             @Override
                             public void updateItem(final OfferBookListItem item, boolean empty) {
                                 super.updateItem(item, empty);
+
                                 if (item != null && !empty) {
                                     var isSellOffer = item.getOffer().getDirection() == OfferDirection.SELL;
                                     var deposit = isSellOffer ? item.getOffer().getMaxBuyerSecurityDeposit() :

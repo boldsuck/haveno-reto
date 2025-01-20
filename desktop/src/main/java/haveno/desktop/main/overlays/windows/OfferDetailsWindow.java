@@ -180,8 +180,9 @@ public class OfferDetailsWindow extends Overlay<OfferDetailsWindow> {
         boolean showExtraInfo = offer.getPaymentMethod().equals(PaymentMethod.F2F) ||
                 offer.getPaymentMethod().equals(PaymentMethod.PAY_BY_MAIL) ||
                 offer.getPaymentMethod().equals(PaymentMethod.AUSTRALIA_PAYID)||
-                offer.getPaymentMethod().equals(PaymentMethod.PAYPAL_ID)||
-                offer.getPaymentMethod().equals(PaymentMethod.CASH_APP_ID);
+                offer.getPaymentMethod().equals(PaymentMethod.PAYPAL)||
+                offer.getPaymentMethod().equals(PaymentMethod.CASH_APP) ||
+                offer.getPaymentMethod().equals(PaymentMethod.CASH_AT_ATM);
         if (!takeOfferHandlerOptional.isPresent())
             rows++;
         if (showAcceptedBanks)
@@ -368,11 +369,11 @@ public class OfferDetailsWindow extends Overlay<OfferDetailsWindow> {
                 DisplayUtils.formatDateTime(offer.getDate()));
         String value = Res.getWithColAndCap("shared.buyer") +
                 " " +
-                HavenoUtils.formatXmr(offer.getOfferPayload().getMaxBuyerSecurityDeposit(), true) +
+                HavenoUtils.formatXmr(takeOfferHandlerOptional.isPresent() ? offer.getOfferPayload().getBuyerSecurityDepositForTradeAmount(tradeAmount) : offer.getOfferPayload().getMaxBuyerSecurityDeposit(), true) +
                 " / " +
                 Res.getWithColAndCap("shared.seller") +
                 " " +
-                HavenoUtils.formatXmr(offer.getOfferPayload().getMaxSellerSecurityDeposit(), true);
+                HavenoUtils.formatXmr(takeOfferHandlerOptional.isPresent() ? offer.getOfferPayload().getSellerSecurityDepositForTradeAmount(tradeAmount) : offer.getOfferPayload().getMaxSellerSecurityDeposit(), true);
         addConfirmationLabelLabel(gridPane, ++rowIndex, Res.get("shared.securityDeposit"), value);
 
         if (reservedAmount != null) {
