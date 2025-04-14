@@ -70,9 +70,11 @@ monerod1-local:
 		--log-level 0 \
 		--add-exclusive-node 127.0.0.1:48080 \
 		--add-exclusive-node 127.0.0.1:58080 \
+		--max-connections-per-ip 10 \
 		--rpc-access-control-origins http://localhost:8080 \
 		--fixed-difficulty 500 \
 		--disable-rpc-ban \
+		--rpc-max-connections-per-private-ip 100 \
 
 monerod2-local:
 	./.localnet/monerod \
@@ -88,9 +90,11 @@ monerod2-local:
 		--confirm-external-bind \
 		--add-exclusive-node 127.0.0.1:28080 \
 		--add-exclusive-node 127.0.0.1:58080 \
+		--max-connections-per-ip 10 \
 		--rpc-access-control-origins http://localhost:8080 \
 		--fixed-difficulty 500 \
 		--disable-rpc-ban \
+		--rpc-max-connections-per-private-ip 100 \
 
 monerod3-local:
 	./.localnet/monerod \
@@ -106,9 +110,11 @@ monerod3-local:
 		--confirm-external-bind \
 		--add-exclusive-node 127.0.0.1:28080 \
 		--add-exclusive-node 127.0.0.1:48080 \
+		--max-connections-per-ip 10 \
 		--rpc-access-control-origins http://localhost:8080 \
 		--fixed-difficulty 500 \
 		--disable-rpc-ban \
+		--rpc-max-connections-per-private-ip 100 \
 
 #--proxy 127.0.0.1:49775 \
 
@@ -408,6 +414,17 @@ user3-desktop-stagenet:
 
 haveno-desktop-stagenet:
 	./haveno-desktop$(APP_EXT) \
+		--baseCurrencyNetwork=XMR_STAGENET \
+		--useLocalhostForP2P=false \
+		--useDevPrivilegeKeys=false \
+		--nodePort=9999 \
+		--appName=Haveno \
+		--apiPassword=apitest \
+		--apiPort=3204 \
+		--useNativeXmrWallet=false \
+
+haveno-daemon-stagenet:
+	./haveno-daemon$(APP_EXT) \
 		--baseCurrencyNetwork=XMR_STAGENET \
 		--useLocalhostForP2P=false \
 		--useDevPrivilegeKeys=false \

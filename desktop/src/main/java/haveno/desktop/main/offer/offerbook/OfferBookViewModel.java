@@ -173,6 +173,11 @@ abstract class OfferBookViewModel extends ActivatableViewModel {
 
         tradeCurrencyListChangeListener = c -> fillCurrencies();
 
+        // refresh filter on changes
+        offerBook.getOfferBookListItems().addListener((ListChangeListener<OfferBookListItem>) c -> {
+            filterOffers();
+        });
+
         filterItemsListener = c -> {
             final Optional<OfferBookListItem> highestAmountOffer = filteredItems.stream()
                     .max(Comparator.comparingLong(o -> o.getOffer().getAmount().longValueExact()));
@@ -290,7 +295,7 @@ abstract class OfferBookViewModel extends ActivatableViewModel {
         if (!showAllPaymentMethods) {
             this.selectedPaymentMethod = paymentMethod;
 
-            // If we select TransferWise we switch to show all currencies as TransferWise supports
+            // If we select Wise we switch to show all currencies as Wise supports
             // sending to most currencies.
             if (paymentMethod.getId().equals(PaymentMethod.TRANSFERWISE_ID)) {
                 onSetTradeCurrency(new CryptoCurrency(GUIUtil.SHOW_ALL_FLAG, ""));
@@ -483,8 +488,6 @@ abstract class OfferBookViewModel extends ActivatableViewModel {
                 if (countryCode != null) {
                     result += "\n" + Res.get("payment.f2f.offerbook.tooltip.countryAndCity",
                             CountryUtil.getNameByCode(countryCode), offer.getF2FCity());
-
-                    result += "\n" + Res.get("payment.f2f.offerbook.tooltip.extra", offer.getExtraInfo());
                 }
             } else {
                 if (countryCode != null) {
@@ -514,6 +517,8 @@ abstract class OfferBookViewModel extends ActivatableViewModel {
                         result += "\n" + Res.getWithCol("shared.acceptedBanks") + " " + Joiner.on(", ").join(acceptedBanks);
                 }
             }
+            if (offer.getCombinedExtraInfo() != null && !offer.getCombinedExtraInfo().isEmpty())
+                result += "\n" + Res.get("payment.shared.extraInfo.tooltip", offer.getCombinedExtraInfo());
         }
         return result;
     }
@@ -597,9 +602,28 @@ abstract class OfferBookViewModel extends ActivatableViewModel {
             nextPredicate = nextPredicate.or(offerBookListItem ->
                     offerBookListItem.getOffer().getId().toLowerCase().contains(filterText.toLowerCase()));
 
-            // filter payment method
+            // filter full payment method
             nextPredicate = nextPredicate.or(offerBookListItem ->
                     Res.get(offerBookListItem.getOffer().getPaymentMethod().getId()).toLowerCase().contains(filterText.toLowerCase()));
+
+            // filter short payment method
+            nextPredicate = nextPredicate.or(offerBookListItem -> {
+                return getPaymentMethod(offerBookListItem).toLowerCase().contains(filterText.toLowerCase());
+            });
+
+            // filter currencies
+            nextPredicate = nextPredicate.or(offerBookListItem -> {
+                return offerBookListItem.getOffer().getCurrencyCode().toLowerCase().contains(filterText.toLowerCase()) ||
+                        offerBookListItem.getOffer().getBaseCurrencyCode().toLowerCase().contains(filterText.toLowerCase()) ||
+                        CurrencyUtil.getNameAndCode(offerBookListItem.getOffer().getCurrencyCode()).toLowerCase().contains(filterText.toLowerCase()) ||
+                        CurrencyUtil.getNameAndCode(offerBookListItem.getOffer().getBaseCurrencyCode()).toLowerCase().contains(filterText.toLowerCase());
+            });
+
+            // filter extra info
+            nextPredicate = nextPredicate.or(offerBookListItem -> {
+                return offerBookListItem.getOffer().getCombinedExtraInfo() != null &&
+                        offerBookListItem.getOffer().getCombinedExtraInfo().toLowerCase().contains(filterText.toLowerCase());
+            });
 
             filteredItems.setPredicate(predicate.and(nextPredicate));
         } else {
@@ -643,9 +667,10 @@ abstract class OfferBookViewModel extends ActivatableViewModel {
 
     public boolean hasSelectionAccountSigning() {
         if (showAllTradeCurrenciesProperty.get()) {
-            if (!isShowAllEntry(selectedPaymentMethod.getId())) {
+            if (isShowAllEntry(selectedPaymentMethod.getId()))
+                return !(this instanceof CryptoOfferBookViewModel);
+            else
                 return PaymentMethod.hasChargebackRisk(selectedPaymentMethod);
-            }
         } else {
             if (isShowAllEntry(selectedPaymentMethod.getId()))
                 return CurrencyUtil.getMatureMarketCurrencies().stream()
@@ -653,7 +678,6 @@ abstract class OfferBookViewModel extends ActivatableViewModel {
             else
                 return PaymentMethod.hasChargebackRisk(selectedPaymentMethod, tradeCurrencyCode.get());
         }
-        return true;
     }
 
     private static String getDirectionWithCodeDetailed(OfferDirection direction, String currencyCode) {
@@ -711,6 +735,6 @@ abstract class OfferBookViewModel extends ActivatableViewModel {
     abstract String getCurrencyCodeFromPreferences(OfferDirection direction);
 
     public OpenOffer getOpenOffer(Offer offer) {
-        return openOfferManager.getOpenOfferById(offer.getId()).orElse(null);
+        return openOfferManager.getOpenOffer(offer.getId()).orElse(null);
     }
 }

@@ -55,6 +55,7 @@ import haveno.core.alert.PrivateNotificationManager;
 import haveno.core.alert.PrivateNotificationPayload;
 import haveno.core.api.CoreContext;
 import haveno.core.api.XmrConnectionService;
+import haveno.core.api.XmrConnectionService.XmrConnectionError;
 import haveno.core.api.XmrLocalNode;
 import haveno.core.locale.Res;
 import haveno.core.offer.OpenOfferManager;
@@ -158,7 +159,7 @@ public class HavenoSetup {
             rejectedTxErrorMessageHandler;
     @Setter
     @Nullable
-    private Consumer<Boolean> displayMoneroConnectionFallbackHandler;        
+    private Consumer<XmrConnectionError> displayMoneroConnectionErrorHandler;        
     @Setter
     @Nullable
     private Consumer<Boolean> displayTorNetworkSettingsHandler;
@@ -176,7 +177,7 @@ public class HavenoSetup {
     private Consumer<PrivateNotificationPayload> displayPrivateNotificationHandler;
     @Setter
     @Nullable
-    private Runnable showPopupIfInvalidBtcConfigHandler;
+    private Runnable showPopupIfInvalidXmrConfigHandler;
     @Setter
     @Nullable
     private Consumer<List<RevolutAccount>> revolutAccountsUpdateHandler;
@@ -430,9 +431,9 @@ public class HavenoSetup {
         getXmrWalletSyncProgress().addListener((observable, oldValue, newValue) -> resetStartupTimeout());
 
         // listen for fallback handling
-        getConnectionServiceFallbackHandlerActive().addListener((observable, oldValue, newValue) -> {
-            if (displayMoneroConnectionFallbackHandler == null) return;
-            displayMoneroConnectionFallbackHandler.accept(newValue);
+        getConnectionServiceError().addListener((observable, oldValue, newValue) -> {
+            if (displayMoneroConnectionErrorHandler == null) return;
+            displayMoneroConnectionErrorHandler.accept(newValue);
         });
 
         log.info("Init P2P network");
@@ -461,7 +462,7 @@ public class HavenoSetup {
         havenoSetupListeners.forEach(HavenoSetupListener::onInitWallet);
         walletAppSetup.init(chainFileLockedExceptionHandler,
                 showFirstPopupIfResyncSPVRequestedHandler,
-                showPopupIfInvalidBtcConfigHandler,
+                showPopupIfInvalidXmrConfigHandler,
                 () -> {},
                 () -> {});
     }
@@ -734,8 +735,8 @@ public class HavenoSetup {
         return xmrConnectionService.getConnectionServiceErrorMsg();
     }
 
-    public BooleanProperty getConnectionServiceFallbackHandlerActive() {
-        return xmrConnectionService.getConnectionServiceFallbackHandlerActive();
+    public ObjectProperty<XmrConnectionError> getConnectionServiceError() {
+        return xmrConnectionService.getConnectionServiceError();
     }
 
     public StringProperty getTopErrorMsg() {

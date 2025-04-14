@@ -49,7 +49,7 @@ configure(subprojects) {
         gsonVersion = '2.8.5'
         guavaVersion = '32.1.1-jre'
         guiceVersion = '7.0.0'
-        moneroJavaVersion = '0.8.35'
+        moneroJavaVersion = '0.8.36'
         httpclient5Version = '5.0'
         hamcrestVersion = '2.2'
         httpclientVersion = '4.5.12'
@@ -71,7 +71,7 @@ configure(subprojects) {
         loggingVersion = '1.2'
         lombokVersion = '1.18.30'
         mockitoVersion = '5.10.0'
-        netlayerVersion = '700ec94f0f' // Tor browser version 14.0.3 and tor binary version: 0.4.8.13
+        netlayerVersion = 'd9c60be46d' // Tor browser version 14.0.7 and tor binary version: 0.4.8.14
         protobufVersion = '3.19.1'
         protocVersion = protobufVersion
         pushyVersion = '0.13.2'
@@ -457,14 +457,14 @@ configure(project(':core')) {
         doLast {
             // get monero binaries download url
             Map moneroBinaries = [
-                'linux-x86_64'         : 'https://github.com/haveno-dex/monero/releases/download/release4/monero-bins-haveno-linux-x86_64.tar.gz',
-                'linux-x86_64-sha256'  : '0810808292fd5ad595a46a7fcc8ecb28d251d80f8d75c0e7a7d51afbeb413b68',
-                'linux-aarch64'        : 'https://github.com/haveno-dex/monero/releases/download/release4/monero-bins-haveno-linux-aarch64.tar.gz',
-                'linux-aarch64-sha256' : '61222ee8e2021aaf59ab8813543afc5548f484190ee9360bc9cfa8fdf21cc1de',
-                'mac'                  : 'https://github.com/haveno-dex/monero/releases/download/release4/monero-bins-haveno-mac.tar.gz',
-                'mac-sha256'           : '5debb8d8d8dd63809e8351368a11aa85c47987f1a8a8f2dcca343e60bcff3287',
-                'windows'              : 'https://github.com/haveno-dex/monero/releases/download/release4/monero-bins-haveno-windows.zip',
-                'windows-sha256'       : 'd7c14f029db37ae2a8bc6b74c35f572283257df5fbcc8cc97b704d1a97be9888'
+                'linux-x86_64'         : 'https://github.com/haveno-dex/monero/releases/download/release6/monero-bins-haveno-linux-x86_64.tar.gz',
+                'linux-x86_64-sha256'  : '44470a3cf2dd9be7f3371a8cc89a34cf9a7e88c442739d87ef9a0ec3ccb65208',
+                'linux-aarch64'        : 'https://github.com/haveno-dex/monero/releases/download/release6/monero-bins-haveno-linux-aarch64.tar.gz',
+                'linux-aarch64-sha256' : 'c9505524689b0d7a020b8d2fd449c3cb9f8fd546747f9bdcf36cac795179f71c',
+                'mac'                  : 'https://github.com/haveno-dex/monero/releases/download/release6/monero-bins-haveno-mac.tar.gz',
+                'mac-sha256'           : 'dea6eddefa09630cfff7504609bd5d7981316336c64e5458e242440694187df8',
+                'windows'              : 'https://github.com/haveno-dex/monero/releases/download/release6/monero-bins-haveno-windows.zip',
+                'windows-sha256'       : '284820e28c4770d7065fad7863e66fe0058053ca2372b78345d83c222edc572d'
             ]
 
             String osKey
@@ -506,16 +506,16 @@ configure(project(':core')) {
                 } else {
                     ext.extractArchiveTarGz(moneroArchiveFile, localnetDir)
                 }
+            }
 
-                // add the current platform's monero dependencies into the resources folder for installation
-                copy {
-                    from "${monerodFile}"
-                    into "${project(':core').projectDir}/src/main/resources/bin"
-                }
-                copy {
-                    from "${moneroRpcFile}"
-                    into "${project(':core').projectDir}/src/main/resources/bin"
-                }
+            // add the current platform's monero dependencies into the resources folder for installation
+            copy {
+                from "${monerodFile}"
+                into "${project(':core').projectDir}/src/main/resources/bin"
+            }
+            copy {
+                from "${moneroRpcFile}"
+                into "${project(':core').projectDir}/src/main/resources/bin"
             }
         }
 
@@ -610,7 +610,7 @@ configure(project(':desktop')) {
     apply plugin: 'com.github.johnrengelman.shadow'
     apply from: 'package/package.gradle'
 
-    version = '1.0.18-SNAPSHOT'
+    version = '1.0.19-SNAPSHOT'
 
     jar.manifest.attributes(
         "Implementation-Title": project.name,

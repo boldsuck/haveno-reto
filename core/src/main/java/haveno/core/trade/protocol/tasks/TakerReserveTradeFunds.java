@@ -70,6 +70,9 @@ public class TakerReserveTradeFunds extends TradeTask {
                                 MoneroRpcConnection sourceConnection = trade.getXmrConnectionService().getConnection();
                                 try {
                                     reserveTx = model.getXmrWalletService().createReserveTx(penaltyFee, takerFee, sendAmount, securityDeposit, returnAddress, false, null);
+                                } catch (IllegalStateException e) {
+                                    log.warn("Illegal state creating reserve tx, offerId={}, error={}", trade.getShortId(), i + 1, e.getMessage());
+                                    throw e;
                                 } catch (Exception e) {
                                     log.warn("Error creating reserve tx, tradeId={}, attempt={}/{}, error={}", trade.getShortId(), i + 1, TradeProtocol.MAX_ATTEMPTS, e.getMessage());
                                     trade.getXmrWalletService().handleWalletError(e, sourceConnection);
@@ -86,7 +89,7 @@ public class TakerReserveTradeFunds extends TradeTask {
                     } catch (Exception e) {
 
                         // reset state with wallet lock
-                        model.getXmrWalletService().resetAddressEntriesForTrade(trade.getId());
+                        model.getXmrWalletService().swapPayoutAddressEntryToAvailable(trade.getId());
                         if (reserveTx != null) {
                             model.getXmrWalletService().thawOutputs(HavenoUtils.getInputKeyImages(reserveTx));
                             trade.getSelf().setReserveTxKeyImages(null);

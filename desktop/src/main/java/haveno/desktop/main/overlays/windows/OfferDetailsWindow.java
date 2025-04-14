@@ -177,19 +177,14 @@ public class OfferDetailsWindow extends Overlay<OfferDetailsWindow> {
         List<String> acceptedCountryCodes = offer.getAcceptedCountryCodes();
         boolean showAcceptedCountryCodes = acceptedCountryCodes != null && !acceptedCountryCodes.isEmpty();
         boolean isF2F = offer.getPaymentMethod().equals(PaymentMethod.F2F);
-        boolean showExtraInfo = offer.getPaymentMethod().equals(PaymentMethod.F2F) ||
-                offer.getPaymentMethod().equals(PaymentMethod.PAY_BY_MAIL) ||
-                offer.getPaymentMethod().equals(PaymentMethod.AUSTRALIA_PAYID)||
-                offer.getPaymentMethod().equals(PaymentMethod.PAYPAL)||
-                offer.getPaymentMethod().equals(PaymentMethod.CASH_APP) ||
-                offer.getPaymentMethod().equals(PaymentMethod.CASH_AT_ATM);
+        boolean showOfferExtraInfo = offer.getCombinedExtraInfo() != null && !offer.getCombinedExtraInfo().isEmpty();
         if (!takeOfferHandlerOptional.isPresent())
             rows++;
         if (showAcceptedBanks)
             rows++;
         if (showAcceptedCountryCodes)
             rows++;
-        if (showExtraInfo)
+        if (showOfferExtraInfo)
             rows++;
         if (isF2F)
             rows++;
@@ -216,7 +211,7 @@ public class OfferDetailsWindow extends Overlay<OfferDetailsWindow> {
             xmrDirectionInfo = direction == OfferDirection.SELL ? toReceive : toSpend;
         } else if (placeOfferHandlerOptional.isPresent()) {
             addConfirmationLabelLabel(gridPane, rowIndex, offerTypeLabel,
-                    DisplayUtils.getOfferDirectionForCreateOffer(direction, currencyCode), firstRowDistance);
+                    DisplayUtils.getOfferDirectionForCreateOffer(direction, currencyCode, offer.isPrivateOffer()), firstRowDistance);
             counterCurrencyDirectionInfo = direction == OfferDirection.SELL ? toReceive : toSpend;
             xmrDirectionInfo = direction == OfferDirection.BUY ? toReceive : toSpend;
         } else {
@@ -320,9 +315,9 @@ public class OfferDetailsWindow extends Overlay<OfferDetailsWindow> {
         if (isF2F) {
             addConfirmationLabelLabel(gridPane, ++rowIndex, Res.get("payment.f2f.city"), offer.getF2FCity());
         }
-        if (showExtraInfo) {
+        if (showOfferExtraInfo) {
             TextArea textArea = addConfirmationLabelTextArea(gridPane, ++rowIndex, Res.get("payment.shared.extraInfo"), "", 0).second;
-            textArea.setText(offer.getExtraInfo());
+            textArea.setText(offer.getCombinedExtraInfo());
             textArea.setMaxHeight(200);
             textArea.sceneProperty().addListener((o, oldScene, newScene) -> {
                 if (newScene != null) {
@@ -347,7 +342,7 @@ public class OfferDetailsWindow extends Overlay<OfferDetailsWindow> {
         BigInteger reservedAmount = isMyOffer ? offer.getReservedAmount() : null;
 
         // get offer challenge
-        OpenOffer myOpenOffer = HavenoUtils.openOfferManager.getOpenOfferById(offer.getId()).orElse(null);
+        OpenOffer myOpenOffer = HavenoUtils.openOfferManager.getOpenOffer(offer.getId()).orElse(null);
         String offerChallenge = myOpenOffer == null ? null : myOpenOffer.getChallenge();
 
         rows = 3;

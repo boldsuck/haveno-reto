@@ -57,7 +57,7 @@ public abstract class XmrWalletBase {
 
     // private
     private boolean testReconnectOnStartup = false; // test reconnecting on startup while syncing so the wallet is blocked
-    private String testReconnectMonerod1 = "http://node.community.rino.io:18081";
+    private String testReconnectMonerod1 = "http://xmr-node.cakewallet.com:18081";
     private String testReconnectMonerod2 = "http://nodex.monerujo.io:18081";
 
     public XmrWalletBase() {
@@ -110,8 +110,10 @@ public abstract class XmrWalletBase {
                 try {
                     height = wallet.getHeight(); // can get read timeout while syncing
                 } catch (Exception e) {
-                    log.warn("Error getting wallet height while syncing with progress: " + e.getMessage());
-                    if (wallet != null && !isShutDownStarted) log.warn(ExceptionUtils.getStackTrace(e));
+                    if (wallet != null && !isShutDownStarted) {
+                        log.warn("Error getting wallet height while syncing with progress: " + e.getMessage());
+                        log.warn(ExceptionUtils.getStackTrace(e));
+                    }
 
                     // stop polling and release latch
                     syncProgressError = e;

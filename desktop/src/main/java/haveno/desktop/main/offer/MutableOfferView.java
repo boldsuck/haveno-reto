@@ -45,6 +45,7 @@ import haveno.desktop.components.BalanceTextField;
 import haveno.desktop.components.BusyAnimation;
 import haveno.desktop.components.FundsTextField;
 import haveno.desktop.components.InfoInputTextField;
+import haveno.desktop.components.InputTextArea;
 import haveno.desktop.components.InputTextField;
 import haveno.desktop.components.TitledGroupBg;
 import haveno.desktop.main.MainView;
@@ -126,7 +127,7 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
 
     private ScrollPane scrollPane;
     protected GridPane gridPane;
-    private TitledGroupBg payFundsTitledGroupBg, setDepositTitledGroupBg, paymentTitledGroupBg;
+    private TitledGroupBg payFundsTitledGroupBg, setDepositTitledGroupBg, extraInfoTitledGroupBg, paymentTitledGroupBg;
     protected TitledGroupBg amountTitledGroupBg;
     private BusyAnimation waitingForFundsSpinner;
     private AutoTooltipButton nextButton, cancelButton1, cancelButton2, placeOfferButton, fundFromSavingsWalletButton;
@@ -138,6 +139,7 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
     private BalanceTextField balanceTextField;
     private ToggleButton reserveExactAmountSlider;
     private ToggleButton buyerAsTakerWithoutDepositSlider;
+    protected InputTextArea extraInfoTextArea;
     private FundsTextField totalToPayTextField;
     private Label amountDescriptionLabel, priceCurrencyLabel, priceDescriptionLabel, volumeDescriptionLabel,
             waitingForFundsLabel, marketBasedPriceLabel, percentagePriceDescriptionLabel, tradeFeeDescriptionLabel,
@@ -156,10 +158,10 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
     private ChangeListener<Boolean> amountFocusedListener, minAmountFocusedListener, volumeFocusedListener,
             securityDepositFocusedListener, priceFocusedListener, placeOfferCompletedListener,
             priceAsPercentageFocusedListener, getShowWalletFundedNotificationListener,
-            isMinSecurityDepositListener, buyerAsTakerWithoutDepositListener, triggerPriceFocusedListener;
+            isMinSecurityDepositListener, buyerAsTakerWithoutDepositListener, triggerPriceFocusedListener, extraInfoFocusedListener;
     private ChangeListener<BigInteger> missingCoinListener;
     private ChangeListener<String> tradeCurrencyCodeListener, errorMessageListener,
-            marketPriceMarginListener, volumeListener, securityDepositInXMRListener;
+            marketPriceMarginListener, volumeListener, securityDepositInXMRListener, extraInfoListener;
     private ChangeListener<Number> marketPriceAvailableListener;
     private EventHandler<ActionEvent> currencyComboBoxSelectionHandler, paymentAccountsComboBoxSelectionHandler;
     private OfferView.CloseHandler closeHandler;
@@ -202,11 +204,13 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
         addPaymentGroup();
         addAmountPriceGroup();
         addOptionsGroup();
+        addExtraInfoGroup();
+        addNextButtons();
         addFundingGroup();
 
         createListeners();
 
-        balanceTextField.setFormatter(model.getBtcFormatter());
+        balanceTextField.setFormatter(model.getXmrFormatter());
 
         paymentAccountsComboBox.setConverter(GUIUtil.getPaymentAccountsComboBoxStringConverter());
         paymentAccountsComboBox.setButtonCell(GUIUtil.getComboBoxButtonCell(Res.get("shared.chooseTradingAccount"),
@@ -257,6 +261,9 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
             triggerPriceInfoInputTextField.setContentForPopOver(popOverLabel, AwesomeIcon.SHIELD);
 
             buyerAsTakerWithoutDepositSlider.setSelected(model.dataModel.getBuyerAsTakerWithoutDeposit().get());
+
+            triggerPriceInputTextField.setText(model.triggerPrice.get());
+            extraInfoTextArea.setText(model.dataModel.extraInfo.get());
         }
     }
 
@@ -290,11 +297,13 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
         model.getDataModel().onTabSelected(isSelected);
     }
 
-    public void initWithData(OfferDirection direction, TradeCurrency tradeCurrency,
+    public void initWithData(OfferDirection direction,
+                             TradeCurrency tradeCurrency,
+                             boolean initAddressEntry,
                              OfferView.OfferActionHandler offerActionHandler) {
         this.offerActionHandler = offerActionHandler;
 
-        boolean result = model.initWithData(direction, tradeCurrency);
+        boolean result = model.initWithData(direction, tradeCurrency, initAddressEntry);
 
         if (!result) {
             new Popup().headLine(Res.get("popup.warning.noTradingAccountSetup.headline"))
@@ -388,6 +397,11 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
 
         buyerAsTakerWithoutDepositSlider.setVisible(false);
         buyerAsTakerWithoutDepositSlider.setManaged(false);
+
+        extraInfoTitledGroupBg.setVisible(false);
+        extraInfoTitledGroupBg.setManaged(false);
+        extraInfoTextArea.setVisible(false);
+        extraInfoTextArea.setManaged(false);
 
         updateQrCode();
 
@@ -571,6 +585,7 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
         securityDepositLabel.textProperty().bind(model.securityDepositLabel);
         tradeFeeInXmrLabel.textProperty().bind(model.tradeFeeInXmrWithFiat);
         tradeFeeDescriptionLabel.textProperty().bind(model.tradeFeeDescription);
+        extraInfoTextArea.textProperty().bindBidirectional(model.extraInfo);
 
         // Validation
         amountTextField.validationResultProperty().bind(model.amountValidationResult);
@@ -579,6 +594,7 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
         triggerPriceInputTextField.validationResultProperty().bind(model.triggerPriceValidationResult);
         volumeTextField.validationResultProperty().bind(model.volumeValidationResult);
         securityDepositInputTextField.validationResultProperty().bind(model.securityDepositValidationResult);
+        extraInfoTextArea.validationResultProperty().bind(model.extraInfoValidationResult);
 
         // funding
         fundingHBox.visibleProperty().bind(model.getDataModel().getIsXmrWalletFunded().not().and(model.showPayFundsScreenDisplayed));
@@ -621,6 +637,7 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
         tradeFeeDescriptionLabel.textProperty().unbind();
         tradeFeeInXmrLabel.visibleProperty().unbind();
         tradeFeeDescriptionLabel.visibleProperty().unbind();
+        extraInfoTextArea.textProperty().unbindBidirectional(model.extraInfo);
 
         // Validation
         amountTextField.validationResultProperty().unbind();
@@ -694,10 +711,13 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
             model.onFocusOutSecurityDepositTextField(oldValue, newValue);
             securityDepositInputTextField.setText(model.securityDeposit.get());
         };
-
         triggerPriceFocusedListener = (o, oldValue, newValue) -> {
             model.onFocusOutTriggerPriceTextField(oldValue, newValue);
             triggerPriceInputTextField.setText(model.triggerPrice.get());
+        };
+        extraInfoFocusedListener = (observable, oldValue, newValue) -> {
+            model.onFocusOutExtraInfoTextArea(oldValue, newValue);
+            extraInfoTextArea.setText(model.extraInfo.get());
         };
 
         errorMessageListener = (o, oldValue, newValue) -> {
@@ -822,6 +842,12 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
         buyerAsTakerWithoutDepositListener = ((observable, oldValue, newValue) -> {
             updateSecurityDepositLabels();
         });
+
+        extraInfoListener = (observable, oldValue, newValue) -> {
+            if (newValue != null && !newValue.equals("")) {
+                // no action
+            }
+        };
     }
 
     private void updateSecurityDepositLabels() {
@@ -881,6 +907,7 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
         model.securityDepositInXMR.addListener(securityDepositInXMRListener);
         model.isMinSecurityDeposit.addListener(isMinSecurityDepositListener);
         model.getDataModel().buyerAsTakerWithoutDeposit.addListener(buyerAsTakerWithoutDepositListener);
+        model.getDataModel().extraInfo.addListener(extraInfoListener);
 
         // focus out
         amountTextField.focusedProperty().addListener(amountFocusedListener);
@@ -890,6 +917,7 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
         marketBasedPriceTextField.focusedProperty().addListener(priceAsPercentageFocusedListener);
         volumeTextField.focusedProperty().addListener(volumeFocusedListener);
         securityDepositInputTextField.focusedProperty().addListener(securityDepositFocusedListener);
+        extraInfoTextArea.focusedProperty().addListener(extraInfoFocusedListener);
 
         // notifications
         model.getDataModel().getShowWalletFundedNotification().addListener(getShowWalletFundedNotificationListener);
@@ -914,6 +942,7 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
         model.securityDepositInXMR.removeListener(securityDepositInXMRListener);
         model.isMinSecurityDeposit.removeListener(isMinSecurityDepositListener);
         model.getDataModel().buyerAsTakerWithoutDeposit.removeListener(buyerAsTakerWithoutDepositListener);
+        model.getDataModel().extraInfo.removeListener(extraInfoListener);
 
         // focus out
         amountTextField.focusedProperty().removeListener(amountFocusedListener);
@@ -923,6 +952,7 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
         marketBasedPriceTextField.focusedProperty().removeListener(priceAsPercentageFocusedListener);
         volumeTextField.focusedProperty().removeListener(volumeFocusedListener);
         securityDepositInputTextField.focusedProperty().removeListener(securityDepositFocusedListener);
+        extraInfoTextArea.focusedProperty().removeListener(extraInfoFocusedListener);
 
         // notifications
         model.getDataModel().getShowWalletFundedNotification().removeListener(getShowWalletFundedNotificationListener);
@@ -1062,7 +1092,31 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
         });
         GridPane.setHalignment(buyerAsTakerWithoutDepositSlider, HPos.LEFT);
         GridPane.setMargin(buyerAsTakerWithoutDepositSlider, new Insets(0, 0, 0, 0));
+    }
 
+    private void addExtraInfoGroup() {
+
+        extraInfoTitledGroupBg = addTitledGroupBg(gridPane, ++gridRow, 1,
+                Res.get("payment.shared.optionalExtra"), 25 + heightAdjustment);
+        GridPane.setColumnSpan(extraInfoTitledGroupBg, 3);
+
+        extraInfoTextArea = new InputTextArea();
+        extraInfoTextArea.setPromptText(Res.get("payment.shared.extraInfo.prompt.offer"));
+        extraInfoTextArea.getStyleClass().add("text-area");
+        extraInfoTextArea.setWrapText(true);
+        extraInfoTextArea.setPrefHeight(75);
+        extraInfoTextArea.setMinHeight(75);
+        extraInfoTextArea.setMaxHeight(75);
+        extraInfoTextArea.setFocusTraversable(false);
+        GridPane.setRowIndex(extraInfoTextArea, gridRow);
+        GridPane.setColumnSpan(extraInfoTextArea, GridPane.REMAINING);
+        GridPane.setColumnIndex(extraInfoTextArea, 0);
+        GridPane.setHalignment(extraInfoTextArea, HPos.LEFT);
+        GridPane.setMargin(extraInfoTextArea, new Insets(Layout.COMPACT_FIRST_ROW_AND_GROUP_DISTANCE, 0, 10, 0));
+        gridPane.getChildren().add(extraInfoTextArea);
+    }
+
+    private void addNextButtons() {
         Tuple2<Button, Button> tuple = add2ButtonsAfterGroup(gridPane, ++gridRow,
                 Res.get("shared.nextStep"), Res.get("shared.cancel"));
         nextButton = (AutoTooltipButton) tuple.first;
@@ -1105,14 +1159,24 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
     protected void hideOptionsGroup() {
         setDepositTitledGroupBg.setVisible(false);
         setDepositTitledGroupBg.setManaged(false);
-        nextButton.setVisible(false);
-        nextButton.setManaged(false);
-        cancelButton1.setVisible(false);
-        cancelButton1.setManaged(false);
         securityDepositAndFeeBox.setVisible(false);
         securityDepositAndFeeBox.setManaged(false);
         buyerAsTakerWithoutDepositSlider.setVisible(false);
         buyerAsTakerWithoutDepositSlider.setManaged(false);
+    }
+
+    protected void hideExtraInfoGroup() {
+        extraInfoTitledGroupBg.setVisible(false);
+        extraInfoTitledGroupBg.setManaged(false);
+        extraInfoTextArea.setVisible(false);
+        extraInfoTextArea.setManaged(false);
+    }
+
+    protected void hideNextButtons() {
+        nextButton.setVisible(false);
+        nextButton.setManaged(false);
+        cancelButton1.setVisible(false);
+        cancelButton1.setManaged(false);
     }
 
     private VBox getSecurityDepositBox() {
