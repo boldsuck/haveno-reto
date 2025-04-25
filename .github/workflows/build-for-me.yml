@@ -1,0 +1,129 @@
+# GitHub Releases requires a tag, e.g:
+#  git tag -s 1.1.0-1-reto -m "haveno-reto-v1.1.0-1"
+#  git push origin 1.1.0-1-reto
+name: ACAB
+
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+    paths-ignore:
+      - '**/README.md'
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'adopt'
+          cache: gradle
+      - name: Build with Gradle
+        run: ./gradlew build --stacktrace --scan
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: error-reports
+          path: ${{ github.workspace }}/desktop/build/reports
+      - name: cache nodes dependencies
+        uses: actions/upload-artifact@v4
+        with:
+          include-hidden-files: true
+          name: cached-localnet
+          path: .localnet
+      - name: save seednode JARs
+        uses: actions/upload-artifact@v4
+        with:
+          name: haveno-seednode-tar
+          path: seednode/build/distributions/seednode.tar
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm libfuse2 flatpak flatpak-builder appstream
+          flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      - name: Build Haveno Installer
+        run: |
+          ./gradlew clean build --refresh-keys --refresh-dependencies
+          ./gradlew packageInstallers
+        working-directory: .
+
+      # get version from jar
+      - name: Set Version Unix
+        run: |
+          export VERSION=$(ls desktop/build/temp-*/binaries/desktop-*.jar.SHA-256 | grep -Eo 'desktop-[0-9]+\.[0-9]+\.[0-9]+' | sed 's/desktop-//')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Move Release Files on Unix
+        run: |
+            mkdir ${{ github.workspace }}/release-linux-deb
+            mkdir ${{ github.workspace }}/release-linux-rpm
+            mkdir ${{ github.workspace }}/release-linux-appimage
+            mkdir ${{ github.workspace }}/release-linux-flatpak
+            mv desktop/build/temp-*/binaries/haveno_*.deb ${{ github.workspace }}/release-linux-deb/haveno-v${{ env.VERSION }}-linux-x86_64-installer.deb
+            mv desktop/build/temp-*/binaries/haveno-*.rpm ${{ github.workspace }}/release-linux-rpm/haveno-v${{ env.VERSION }}-linux-x86_64-installer.rpm
+            mv desktop/build/temp-*/binaries/haveno_*.AppImage ${{ github.workspace }}/release-linux-appimage/haveno-v${{ env.VERSION }}-linux-x86_64.AppImage
+            mv desktop/build/temp-*/binaries/*.flatpak ${{ github.workspace }}/release-linux-flatpak/haveno-v${{ env.VERSION }}-linux-x86_64.flatpak
+            cp desktop/build/temp-*/binaries/desktop-*.jar.SHA-256 ${{ github.workspace }}/release-linux-deb
+            cp desktop/build/temp-*/binaries/desktop-*.jar.SHA-256 ${{ github.workspace }}/release-linux-rpm
+            cp desktop/build/temp-*/binaries/desktop-*.jar.SHA-256 ${{ github.workspace }}/release-linux-appimage
+            cp desktop/build/temp-*/binaries/desktop-*.jar.SHA-256 ${{ github.workspace }}/release-linux-flatpak
+            cp desktop/build/temp-*/binaries/desktop-*.jar.SHA-256 ${{ github.workspace }}/haveno-v${{ env.VERSION }}-linux-x86_64-SNAPSHOT-all.jar.SHA-256
+        shell: bash
+
+      # linux
+      - uses: actions/upload-artifact@v4
+        name: "Linux - deb artifact"
+        with:
+          name: haveno-linux-deb
+          path: ${{ github.workspace }}/release-linux-deb
+
+      - uses: actions/upload-artifact@v4
+        name: "Linux - rpm artifact"
+        with:
+          name: haveno-linux-rpm
+          path: ${{ github.workspace }}/release-linux-rpm
+
+      - uses: actions/upload-artifact@v4
+        name: "Linux - AppImage artifact"
+        with:
+          name: haveno-linux-appimage
+          path: ${{ github.workspace }}/release-linux-appimage
+
+      - uses: actions/upload-artifact@v4
+        name: "Linux - flatpak artifact"
+        with:
+          name: haveno-linux-flatpak
+          path: ${{ github.workspace }}/release-linux-flatpak
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
+        with:
+#          name:        Name of the release. defaults to tag name
+#          tag_name:    Name of a tag. defaults to github.ref_name
+#          draft: true
+#          prerelease: true
+          files: |
+            seednode/build/distributions/seednode.tar
+            ${{ github.workspace }}/release-linux-deb/haveno-v${{ env.VERSION }}-linux-x86_64-installer.deb
+            ${{ github.workspace }}/haveno-v${{ env.VERSION }}-linux-x86_64-SNAPSHOT-all.jar.SHA-256
+            release-linux-deb/
+            release-linux-deb/*
+
+      - name: Checksums
+#        uses: jmgilman/actions-generate-checksum@v1
+        uses: thewh1teagle/checksum@v2
+        if: github.ref_type == 'tag'
+        with:
+          patterns: |
+             *.deb
+             *.tar
+          algorithm: sha256
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
