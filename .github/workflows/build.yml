@@ -149,10 +149,9 @@ jobs:
           name: haveno-linux-flatpak
           path: ${{ github.workspace }}/release-linux-flatpak
 
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
       - name: Release Files for Linux
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
         if: ${{ matrix.os == 'ubuntu-22.04' }}
         with:
           files: |
@@ -162,12 +161,16 @@ jobs:
             ${{ github.workspace }}/release-linux-flatpak/haveno-v${{ env.VERSION }}-linux-x86_64.flatpak
             ${{ github.workspace }}/haveno-v${{ env.VERSION }}-linux-x86_64-SNAPSHOT-all.jar.SHA-256
       - name: Release Files for macOS
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
         if: ${{ matrix.os == 'macos-13' }}
         with:
           files: |
             ${{ github.workspace }}/release-macos/haveno-v${{ env.VERSION }}-macos-installer.dmg
             ${{ github.workspace }}/haveno-v${{ env.VERSION }}-macos-SNAPSHOT-all.jar.SHA-256
-      - name: Release Files on Windows
+      - name: Release Files for Windows
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
         if: ${{ matrix.os == 'windows-latest' }}
         with:
           files: |
