@@ -1,6 +1,6 @@
 # GitHub Releases requires a tag, e.g:
-#  git tag -s 1.1.0-1-reto -m "haveno-reto-v1.1.0-1"
-#  git push origin 1.1.0-1-reto
+#  git tag -s 1.1.1-1 -m "haveno-reto-v1.1.1-1"
+#  git push origin 1.1.1-1
 name: ACAB
 
 on:
@@ -113,11 +113,10 @@ jobs:
             seednode/build/distributions/seednode.tar
             ${{ github.workspace }}/release-linux-deb/haveno-v${{ env.VERSION }}-linux-x86_64-installer.deb
             ${{ github.workspace }}/haveno-v${{ env.VERSION }}-linux-x86_64-SNAPSHOT-all.jar.SHA-256
-            release-linux-deb/
-            release-linux-deb/*
+            ${{ github.workspace }}/release-linux-deb.zip
+#            release-linux-deb.zip
 
       - name: Checksums
-#        uses: jmgilman/actions-generate-checksum@v1
         uses: thewh1teagle/checksum@v2
         if: github.ref_type == 'tag'
         with:
